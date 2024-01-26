@@ -16,6 +16,7 @@ import datetime
 import logging
 import click
 import requests
+import eyed3
 from . import config
 from .utils import colorize
 
@@ -289,6 +290,25 @@ class BasicSong:
         if self.cover_url:
             self._download_file(self.cover_url, self.cover_fullname, stream=False)
 
+    def merge_song_cover(self):
+        if self.cover_url and self.song_url:
+            song = eyed3.load(self.song_fullname)
+            song.tag.images.set(type_=3, img_data=open(self.cover_fullname, 'rb').read(), mime_type='image/jpeg')
+            song.tag.save(version=eyed3.id3.ID3_DEFAULT_VERSION, encoding='utf-8')
+
+    def set_meta_info(self):
+        song = None
+        if self.song_url:
+            song = eyed3.load(self.song_fullname)
+
+        if song is not None:
+            song.initTag()
+            song.tag.artist = self.singer
+            song.tag.title = self.title
+            if self.cover_url:
+                song.tag.images.set(type_=3, img_data=open(self.cover_fullname, 'rb').read(), mime_type='image/jpeg')
+            song.tag.save(version=eyed3.id3.ID3_DEFAULT_VERSION, encoding='utf-8')
+
     def download(self):
         """ Main download function """
         click.echo("===============================================================")
@@ -302,5 +322,6 @@ class BasicSong:
             self.download_lyrics()
         if config.get("cover"):
             self.download_cover()
+        self.set_meta_info()
 
         click.echo("===============================================================\n")
